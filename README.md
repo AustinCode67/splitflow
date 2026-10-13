@@ -13,4 +13,4 @@
 ![SplitFlow Group Page](screenshots/group-page.png)
 
 ### Analytics and Settlements
-![SplitFlow Analytics](screenshots/analytics.png)
+![SplitFlow Analytics](screenshots/settlement.png)
