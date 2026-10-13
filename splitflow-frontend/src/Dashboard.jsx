@@ -18,44 +18,38 @@ import "./Dashboard.css";
 
 function Dashboard() {
   const userName =
-    localStorage.getItem(
-      "userName"
-    );
+    localStorage.getItem("userName");
 
   const userEmail =
-    localStorage.getItem(
-      "userEmail"
-    );
+    localStorage.getItem("userEmail");
 
-  const [
-    groups,
-    setGroups,
-  ] = useState([]);
+  // =========================================================
+  // MAIN STATE
+  // =========================================================
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [groups, setGroups] =
+    useState([]);
 
-  const [
-    selectedGroup,
-    setSelectedGroup,
-  ] = useState(null);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    newGroupName,
-    setNewGroupName,
-  ] = useState("");
+  const [selectedGroup, setSelectedGroup] =
+    useState(null);
 
-  const [
-    creating,
-    setCreating,
-  ] = useState(false);
+  const [newGroupName, setNewGroupName] =
+    useState("");
 
-  const [
-    status,
-    setStatus,
-  ] = useState(null);
+  const [creating, setCreating] =
+    useState(false);
+
+  const [status, setStatus] =
+    useState(null);
+
+  const [monthlySpending, setMonthlySpending] =
+    useState(0);
+
+  const [loadingMonthlySpending, setLoadingMonthlySpending] =
+    useState(false);
 
   // =========================================================
   // ACCOUNT SWITCHER
@@ -88,23 +82,134 @@ function Dashboard() {
   // STATUS
   // =========================================================
 
-  const showSuccess = (
-    message
-  ) => {
+  const showSuccess = (message) => {
     setStatus({
       type: "success",
       message,
     });
   };
 
-  const showError = (
-    message
-  ) => {
+  const showError = (message) => {
     setStatus({
       type: "error",
       message,
     });
   };
+
+  // =========================================================
+  // LOAD MONTHLY SPENDING
+  // =========================================================
+
+  const loadMonthlySpending =
+    async (groupList) => {
+      if (
+        !groupList ||
+        groupList.length === 0
+      ) {
+        setMonthlySpending(0);
+        return;
+      }
+
+      setLoadingMonthlySpending(true);
+
+      try {
+        const now = new Date();
+
+        const currentMonth =
+          now.getMonth();
+
+        const currentYear =
+          now.getFullYear();
+
+        const expenseRequests =
+          groupList.map(
+            async (group) => {
+              try {
+                const response =
+                  await authFetch(
+                    `/groups/${group.id}/expenses`
+                  );
+
+                if (!response.ok) {
+                  console.warn(
+                    `Could not load expenses for group ${group.id}`
+                  );
+
+                  return [];
+                }
+
+                return await response.json();
+              } catch (error) {
+                console.error(
+                  `Failed to load expenses for group ${group.id}:`,
+                  error
+                );
+
+                return [];
+              }
+            }
+          );
+
+        const expenseLists =
+          await Promise.all(
+            expenseRequests
+          );
+
+        let total = 0;
+
+        expenseLists.forEach(
+          (expenses) => {
+            expenses.forEach(
+              (expense) => {
+                if (
+                  !expense.createdAt
+                ) {
+                  return;
+                }
+
+                const expenseDate =
+                  new Date(
+                    expense.createdAt
+                  );
+
+                if (
+                  Number.isNaN(
+                    expenseDate.getTime()
+                  )
+                ) {
+                  return;
+                }
+
+                const isThisMonth =
+                  expenseDate.getMonth() ===
+                    currentMonth &&
+                  expenseDate.getFullYear() ===
+                    currentYear;
+
+                if (isThisMonth) {
+                  total += Number(
+                    expense.amount || 0
+                  );
+                }
+              }
+            );
+          }
+        );
+
+        setMonthlySpending(total);
+      } catch (error) {
+        console.error(
+          "Failed to calculate monthly spending:",
+          error
+        );
+
+        setMonthlySpending(0);
+      } finally {
+        setLoadingMonthlySpending(
+          false
+        );
+      }
+    };
 
   // =========================================================
   // LOAD GROUPS
@@ -130,10 +235,12 @@ function Dashboard() {
           await response.json();
 
         setGroups(data);
-      } catch (error) {
-        console.error(
-          error
+
+        await loadMonthlySpending(
+          data
         );
+      } catch (error) {
+        console.error(error);
 
         showError(
           error.message
@@ -147,15 +254,11 @@ function Dashboard() {
 
   const loadDevUsers =
     async () => {
-      if (
-        !import.meta.env.DEV
-      ) {
+      if (!import.meta.env.DEV) {
         return;
       }
 
-      setLoadingDevUsers(
-        true
-      );
+      setLoadingDevUsers(true);
 
       try {
         const response =
@@ -174,9 +277,7 @@ function Dashboard() {
         const data =
           await response.json();
 
-        setDevUsers(
-          data
-        );
+        setDevUsers(data);
       } catch (error) {
         console.error(
           "Failed to load development users:",
@@ -215,20 +316,19 @@ function Dashboard() {
   // =========================================================
 
   useEffect(() => {
-    const handleOutsideClick = (
-      event
-    ) => {
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(
-          event.target
-        )
-      ) {
-        setShowAccountMenu(
-          false
-        );
-      }
-    };
+    const handleOutsideClick =
+      (event) => {
+        if (
+          accountMenuRef.current &&
+          !accountMenuRef.current.contains(
+            event.target
+          )
+        ) {
+          setShowAccountMenu(
+            false
+          );
+        }
+      };
 
     document.addEventListener(
       "mousedown",
@@ -316,9 +416,7 @@ function Dashboard() {
           "Group created successfully."
         );
       } catch (error) {
-        console.error(
-          error
-        );
+        console.error(error);
 
         showError(
           error.message
@@ -395,17 +493,13 @@ function Dashboard() {
 
         window.location.reload();
       } catch (error) {
-        console.error(
-          error
-        );
+        console.error(error);
 
         showError(
           error.message
         );
 
-        setSwitchingAccount(
-          ""
-        );
+        setSwitchingAccount("");
       }
     };
 
@@ -429,22 +523,6 @@ function Dashboard() {
           (group) =>
             group.createdByEmail
               ?.toLowerCase() ===
-            userEmail
-              ?.toLowerCase()
-        ),
-      [
-        groups,
-        userEmail,
-      ]
-    );
-
-  const memberGroups =
-    useMemo(
-      () =>
-        groups.filter(
-          (group) =>
-            group.createdByEmail
-              ?.toLowerCase() !==
             userEmail
               ?.toLowerCase()
         ),
@@ -548,12 +626,10 @@ function Dashboard() {
           <div className="sidebar-user">
 
             <div className="user-avatar">
-
               {userName
                 ?.charAt(0)
                 ?.toUpperCase() ||
                 "U"}
-
             </div>
 
             <div className="sidebar-user-info">
@@ -632,12 +708,10 @@ function Dashboard() {
             >
 
               <div className="header-avatar">
-
                 {userName
                   ?.charAt(0)
                   ?.toUpperCase() ||
                   "U"}
-
               </div>
 
               <div className="profile-details">
@@ -757,14 +831,12 @@ function Dashboard() {
                               >
 
                                 <div className="account-option-avatar">
-
                                   {account.name
                                     ?.charAt(
                                       0
                                     )
                                     ?.toUpperCase() ||
                                     "U"}
-
                                 </div>
 
                                 <div className="account-option-info">
@@ -841,12 +913,10 @@ function Dashboard() {
             <div className="dashboard-status-content">
 
               <span className="dashboard-status-icon">
-
                 {status.type ===
                 "success"
                   ? "✓"
                   : "!"}
-
               </span>
 
               <span>
@@ -874,6 +944,8 @@ function Dashboard() {
 
         <section className="dashboard-stats">
 
+          {/* TOTAL GROUPS */}
+
           <div className="dashboard-stat-card">
 
             <div className="stat-icon">
@@ -897,6 +969,8 @@ function Dashboard() {
             </div>
 
           </div>
+
+          {/* GROUPS OWNED */}
 
           <div className="dashboard-stat-card">
 
@@ -922,29 +996,37 @@ function Dashboard() {
 
           </div>
 
+          {/* MONTHLY SPENDING */}
+
           <div className="dashboard-stat-card">
 
             <div className="stat-icon">
-              🤝
+              💳
             </div>
 
             <div>
 
               <span className="stat-label">
-                Member Groups
+                Spent This Month
               </span>
 
-              <strong>
-                {memberGroups.length}
+              <strong className="budget-stat">
+                {loadingMonthlySpending
+                  ? "..."
+                  : `RM ${monthlySpending.toFixed(
+                      2
+                    )}`}
               </strong>
 
               <small>
-                Groups shared with you
+                Across all your groups
               </small>
 
             </div>
 
           </div>
+
+          {/* COMBINED BUDGET */}
 
           <div className="dashboard-stat-card">
 
@@ -959,13 +1041,10 @@ function Dashboard() {
               </span>
 
               <strong className="budget-stat">
-
                 RM{" "}
-
                 {totalBudget.toFixed(
                   2
                 )}
-
               </strong>
 
               <small>
@@ -1220,13 +1299,10 @@ function Dashboard() {
                           </span>
 
                           <strong>
-
                             RM{" "}
-
                             {budget.toFixed(
                               2
                             )}
-
                           </strong>
 
                         </div>

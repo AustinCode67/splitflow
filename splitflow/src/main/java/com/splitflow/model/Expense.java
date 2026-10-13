@@ -2,6 +2,9 @@ package com.splitflow.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "expenses")
@@ -20,6 +23,10 @@ public class Expense {
     private String paidByEmail;
 
     private String category;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
     public Expense() {
     }
@@ -58,6 +65,14 @@ public class Expense {
         return paidByEmail;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -78,11 +93,11 @@ public class Expense {
         this.paidByEmail = paidByEmail;
     }
 
-    public String getCategory() {
-        return category;
-    }
-
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }
